@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Version](https://img.shields.io/badge/version-v260530-blue.svg)](https://github.com/navipilot/CPlink/releases)
+[![Version](https://img.shields.io/badge/version-v260724-blue.svg)](https://github.com/rhkjyn/cplink/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%208.0%2B-orange.svg)](https://android.com)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.1-purple.svg)](https://kotlinlang.org)
@@ -24,11 +24,20 @@ Navipilot (CP搭子) 是一款专为 **comma3/openpilot** 设备打造的 Androi
 
 ### 项目信息
 
-- **版本**：v260530 (versionCode: 260530)
-- **包名**：`com.example.navipilot`
+- **版本**：v260724 (versionCode: 260724)
+- **包名**：`com.jixiexiaoge.drivingassist`
 - **最低要求**：Android 8.0 (API 26)
 - **目标平台**：Android 14 (API 35)
 - **架构支持**：arm64-v8a（默认），可选 armeabi-v7a
+
+### 最近更新（v260724）
+
+- **🚦 红绿灯倒计时下发**：UDP 7706 数据包新增「组10：红绿灯倒计时」字段（`trafficLightState` 红绿灯状态、`trafficLightCountdown` 倒计时秒数），导航端采集的红绿灯信息实时同步至 comma3
+- **🧹 SDK 精简**：移除腾讯导航 / Google Navigation / MapLibre SDK 及相关构建配置（`patchRClass` ASM 字节码修补任务、SDK 原生库 keep、sonatype Maven 仓库），构建更快、包体更小
+- **🎛️ 巡航环按钮**：改为直接打开设备 Web 页面（`http://设备IP:7000`）
+- **📤 数据分享开关**：恢复状态切换功能，ShareData 自动读取设备参数当前值
+- **⚡ 性能与稳定性**：SharedPreferences 读写异步化、新增 `composition_state` 状态、搜索工具抽取至独立模块、UI 布局统一
+- **📦 包名迁移**：`com.example.navipilot` → `com.jixiexiaoge.drivingassist`
 
 ---
 
@@ -59,7 +68,7 @@ Navipilot (CP搭子) 是一款专为 **comma3/openpilot** 设备打造的 Androi
 
 ### 安装步骤
 
-1. **下载 APK**：从 [Releases](https://github.com/navipilot/CPlink/releases) 下载最新版本
+1. **下载 APK**：从 [Releases](https://github.com/rhkjyn/cplink/releases) 下载最新版本
 2. **安装应用**：允许"未知来源"安装
 3. **首次启动**：
    - 授予位置、蓝牙、通知等权限
@@ -513,6 +522,8 @@ fun shouldOvertake(): Boolean {
   "nSdiType": 1,
   "nSdiSpeedLimit": 80,
   "nSdiDist": 500,
+  "trafficLightState": 1,
+  "trafficLightCountdown": 23,
   "source_last": "AMAP"
 }
 ```
@@ -528,6 +539,8 @@ fun shouldOvertake(): Boolean {
 | `szTBTMainText` | String | 转弯提示文本 |
 | `nSdiType` | Int | 电子眼类型（1=测速，2=闯红灯等） |
 | `nGoPosDist/Time` | Int | 剩余距离/时间 |
+| `trafficLightState` | Int | 红绿灯状态（-1=未知） |
+| `trafficLightCountdown` | Int | 红绿灯倒计时（秒） |
 
 ### WebSocket 7000 - 设备实时数据
 
@@ -646,7 +659,7 @@ RELEASE_KEY_PASSWORD=your_key_password
 ### 核心模块
 
 ```
-com.example.navipilot/
+com.jixiexiaoge.drivingassist/
 ├── [应用入口与协调]
 │   ├── MainActivity.kt                  # 入口协调器
 │   ├── MainActivityCore.kt             # 核心业务逻辑
@@ -815,8 +828,8 @@ com.example.navipilot/
 
 ## 📮 联系方式
 
-- **Issue**：[GitHub Issues](https://github.com/navipilot/CPlink/issues)
-- **讨论区**：[GitHub Discussions](https://github.com/navipilot/CPlink/discussions)
+- **Issue**：[GitHub Issues](https://github.com/rhkjyn/cplink/issues)
+- **讨论区**：[GitHub Discussions](https://github.com/rhkjyn/cplink/discussions)
 - **邮箱**：support@navipilot.com
 
 ---
@@ -855,7 +868,7 @@ com.example.navipilot/
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=navipilot/CPlink&type=Date)](https://star-history.com/#navipilot/CPlink&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=rhkjyn/cplink&type=Date)](https://star-history.com/#rhkjyn/cplink&Date)
 
 ---
 

@@ -119,6 +119,10 @@ class CarrotManNetworkClient(
             // ===== 组9: 命令通道 (2字段) =====
             put("carrotCmd", fields.carrotCmd)
             put("carrotArg", fields.carrotArg)
+
+            // ===== 组10: 红绿灯倒计时 (2字段) =====
+            put("trafficLightState", fields.trafficLightState)
+            put("trafficLightCountdown", fields.trafficLightCountdown)
         }
     }
 

@@ -1,9 +1,10 @@
 import java.util.Properties
 import java.io.FileOutputStream
-import java.util.jar.JarFile
-import java.util.jar.JarOutputStream
-import java.util.jar.JarEntry
-import org.objectweb.asm.*
+// 已注释：腾讯/Google SDK 相关的 JAR 操作和 ASM 字节码修改（patchRClass 任务已移除）
+// import java.util.jar.JarFile
+// import java.util.jar.JarOutputStream
+// import java.util.jar.JarEntry
+// import org.objectweb.asm.*
 
 plugins {
     alias(libs.plugins.android.application)
@@ -87,9 +88,10 @@ android {
                     pickFirsts += listOf("**/libc++_shared.so")
                     keepDebugSymbols += setOf(
                         "*/libc++_shared.so",
-                        "*/libnavicore.so",
-                        "*/libsynthesizer.so",
-                        "*/libtxmapvis.so"
+                        // 已注释：腾讯/高德 SDK 原生库（SDK 已移除）
+                        // "*/libnavicore.so",
+                        // "*/libsynthesizer.so",
+                        // "*/libtxmapvis.so"
                     )
                 }
             }
