@@ -31,6 +31,12 @@ class NetworkManager(
 ) {
     companion object {
         private const val TAG = "NetworkManager"
+
+        /** 远程重启协议词（与 V7 carrot_serv.py 匹配字面量对齐，跨仓库协议契约，变更需两侧同步发版） */
+        const val CMD_REBOOT = "REBOOT"
+
+        /** 远程关机协议词（与 V7 carrot_serv.py 匹配字面量对齐，跨仓库协议契约，变更需两侧同步发版） */
+        const val CMD_SHUTDOWN = "POWEROFF"
     }
 
     // 网络客户端
@@ -1104,6 +1110,59 @@ class NetworkManager(
                 
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 发送控制指令失败: ${e.message}", e)
+            }
+        }
+    }
+
+    /**
+     * 发送系统电源指令到comma3设备（重启: "REBOOT" / 关机: "POWEROFF"）
+     * V7端 carrot_serv.py 解析到协议词后执行重启/关机（受设备端 EnableRemotePowerCmd 开关控制）
+     *
+     * UDP不可靠，采用重复发送策略：立即发送第1次，间隔100ms再发送2次（共3次）。
+     * 设备端有10秒去重窗口，重复接收不会重复执行
+     *
+     * @param command 系统电源协议词 ("REBOOT" 或 "POWEROFF"，见 CMD_REBOOT/CMD_SHUTDOWN)
+     */
+    fun sendSystemCommand(command: String) {
+        Log.d(TAG, "⚡ NetworkManager.sendSystemCommand: $command")
+
+        if (!::carrotNetworkClient.isInitialized) {
+            Log.w(TAG, "⚠️ 网络客户端未初始化，无法发送系统电源指令")
+            return
+        }
+
+        managerScope.launch(Dispatchers.IO) {
+            try {
+                Log.d(TAG, "📡 准备发送系统电源指令（重复发送模式）")
+
+                // 递增命令索引，用于Python端检测命令变化
+                carrotCmdIndex++
+
+                // 更新 CarrotManFields 中的命令字段（统一数据源）
+                carrotManFields.value = carrotManFields.value.copy(
+                    carrotCmd = command,
+                    carrotArg = ""
+                )
+
+                // 重复发送3次（间隔100ms），防UDP丢包
+                repeat(3) { attemptIndex ->
+                    carrotNetworkClient.sendCarrotManDataImmediately(carrotManFields.value)
+                    Log.v(TAG, "📤 系统电源指令发送 #${attemptIndex + 1}/3")
+                    if (attemptIndex < 2) {
+                        delay(100)
+                    }
+                }
+                Log.i(TAG, "✅ 系统电源指令已发送完成: $command")
+
+                // 延迟清理命令字段，避免周期包继续携带
+                delay(150)
+                carrotManFields.value = carrotManFields.value.copy(
+                    carrotCmd = "",
+                    carrotArg = ""
+                )
+                Log.d(TAG, "🧹 已清理系统电源命令字段")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 发送系统电源指令失败: ${e.message}", e)
             }
         }
     }

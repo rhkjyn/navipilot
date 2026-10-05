@@ -335,6 +335,8 @@ object MainActivityUIComponents {
         trafficLightDir: Int = 0,               // 红绿灯方向
     ) {
         var showAboutDialog by remember { mutableStateOf(false) }
+        // 重启/关机二次确认弹窗状态: null=隐藏, 否则为待发送的系统命令字符串
+        var powerConfirmCommand by remember { mutableStateOf<String?>(null) }
         fun playSound(resourceId: Int, soundName: String) {
             try {
                 MediaPlayer.create(context, resourceId)?.apply {
@@ -420,7 +422,7 @@ object MainActivityUIComponents {
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
                 val cols = if (isLandscape) 5 else 3
-                val rows = 15 / cols
+                val rows = (17 + cols - 1) / cols   // 17个按钮（15个原有 + 新增重启/关机）
                 val btnSize = if (isLandscape) 56.dp else 72.dp
                 val gridSpacing = if (isLandscape) 4.dp else 10.dp
                 Column(
@@ -685,6 +687,34 @@ object MainActivityUIComponents {
                                     }
                                 }
                             }
+                            16 -> {
+                                // 🔄 重启设备 — 点击后弹确认框，手动确认才发送（防误触）
+                                Button(
+                                    onClick = { powerConfirmCommand = NetworkManager.CMD_REBOOT },
+                                    modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF97316)),
+                                    contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                        Icon(Icons.Default.Refresh, "重启", Modifier.size(24.dp), tint = Color.White)
+                                        Text(localized("重启", "Reboot"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
+                            17 -> {
+                                // ⏻ 关机设备 — 点击后弹确认框，手动确认才发送（防误触）
+                                Button(
+                                    onClick = { powerConfirmCommand = NetworkManager.CMD_SHUTDOWN },
+                                    modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                                    contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                        Icon(Icons.Default.PowerSettingsNew, "关机", Modifier.size(24.dp), tint = Color.White)
+                                        Text(localized("关机", "Power Off"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
                             else -> {}
                         }
                     }
@@ -731,6 +761,62 @@ object MainActivityUIComponents {
                         Spacer(Modifier.height(4.dp))
                         Button(onClick = { showAboutDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = PrimaryLight), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth()) {
                             Text(localized("知道了", "Got it"), fontWeight = FontWeight.Medium)
+                        }
+                    }
+                }
+            }
+        }
+
+        // 重启/关机二次确认弹窗（防误触：确认后才通过 UDP 7706 发送系统命令）
+        powerConfirmCommand?.let { cmd ->
+            val isReboot = cmd == NetworkManager.CMD_REBOOT
+            Dialog(onDismissRequest = { powerConfirmCommand = null }) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.78f).widthIn(max = 340.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DialogBackground),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(if (isReboot) "🔄" else "⏻", fontSize = 28.sp)
+                        Text(
+                            localized(if (isReboot) "确认重启设备？" else "确认关机设备？", if (isReboot) "Reboot device?" else "Power off device?"),
+                            fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary
+                        )
+                        Text(
+                            localized(
+                                if (isReboot) "设备将立即重启，openpilot 会中断运行" else "设备将立即关机，需重新上电才能启动",
+                                if (isReboot) "The device will reboot immediately. openpilot will stop running." else "The device will power off immediately and needs to be powered on again to start."
+                            ),
+                            fontSize = 12.sp, color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(
+                                onClick = { powerConfirmCommand = null },
+                                colors = ButtonDefaults.buttonColors(containerColor = Surface600),
+                                shape = RoundedCornerShape(8.dp), modifier = Modifier.weight(1f)
+                            ) {
+                                Text(localized("取消", "Cancel"), color = TextPrimary, fontWeight = FontWeight.Medium)
+                            }
+                            Button(
+                                onClick = {
+                                    powerConfirmCommand = null
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        localized("命令已发送", "Command sent"),
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                    // 优先走 NetworkManager 专用通道（3次重发防丢包）；兜底走通用命令回调
+                                    val nm = networkManager
+                                    if (nm != null) nm.sendSystemCommand(cmd) else onSendCommand(cmd, "")
+                                    onDismiss?.invoke()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = if (isReboot) Color(0xFFF97316) else Color(0xFFEF4444)),
+                                shape = RoundedCornerShape(8.dp), modifier = Modifier.weight(1f)
+                            ) {
+                                Text(localized("确认执行", "Confirm"), color = Color.White, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }

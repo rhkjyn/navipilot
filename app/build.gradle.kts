@@ -183,6 +183,8 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    // 图标库: PowerSettingsNew 等扩展图标不在 icons-core 的50个核心图标内
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // Material View层组件 - 已移除（原为腾讯导航SDK提供主题属性）
 
