@@ -49,6 +49,10 @@ sealed class Page {
     data object Home : Page()
     /** 自动切换实验配置页 */
     data object Experiment : Page()
+    /** 设备 Web 控制页（内嵌 WebView 加载 7000 端口） */
+    data object DeviceWeb : Page()
+    /** Carrot Vision 原生视频页（/ws/camera/road → MediaCodec 硬解码） */
+    data object CameraVision : Page()
 }
 
 /**

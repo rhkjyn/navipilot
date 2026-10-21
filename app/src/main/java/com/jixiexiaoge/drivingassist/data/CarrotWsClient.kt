@@ -25,6 +25,8 @@ class CarrotWsClient(
         private const val TAG = "CarrotWsClient"
         private const val WS_RAW_PATH = "/ws/raw_multiplex"
         private const val WS_CAMERA_PATH = "/ws/camera/road"
+        /** 请求服务端按该帧率转发（性能优先，必要时降低此值换流畅） */
+        private const val CAMERA_FPS = 15
         private const val RECONNECT_BASE_MS = 2000L
         private const val RECONNECT_MAX_MS = 30000L
         private const val DATA_TIMEOUT_MS = 4000L
@@ -119,7 +121,7 @@ class CarrotWsClient(
             return
         }
         val cleanHost = host.trim().replace("http://", "").replace("https://", "").split("/").first()
-        val camUrl = "ws://$cleanHost:7000$WS_CAMERA_PATH"
+        val camUrl = "ws://$cleanHost:7000$WS_CAMERA_PATH?fps=$CAMERA_FPS"
         Log.i(TAG, "📷 连接摄像头 WebSocket: $camUrl")
         cameraWs = client.newWebSocket(Request.Builder().url(camUrl).build(), CameraWsListener())
         cameraConnected = true
@@ -128,10 +130,18 @@ class CarrotWsClient(
     fun disconnect() {
         dataWs?.close(1000, "client closing")
         cameraWs?.close(1000, "client closing")
+        cameraWs = null
         cameraConnected = false
         reconnectJob?.cancel()
         timeoutCheckJob?.cancel()
         _connectionState.value = ConnectionState.DISCONNECTED
+    }
+
+    /** 仅断开摄像头流（保留数据流），原生 Carrot Vision 页面离开时调用 */
+    fun disconnectCamera() {
+        cameraWs?.close(1000, "client closing")
+        cameraWs = null
+        cameraConnected = false
     }
 
     // ===================== 数据监听器 =====================

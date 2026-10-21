@@ -1,4 +1,4 @@
-﻿package com.jixiexiaoge.drivingassist
+package com.jixiexiaoge.drivingassist
 
 import android.content.Context
 import android.content.Intent
@@ -81,7 +81,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jixiexiaoge.drivingassist.ui.components.AutoSwitchExperimentPage
+import com.jixiexiaoge.drivingassist.ui.components.CameraVisionPage
 import com.jixiexiaoge.drivingassist.ui.components.Carrot7706JsonDebugOverlay
+import com.jixiexiaoge.drivingassist.ui.components.DeviceWebPage
 import com.jixiexiaoge.drivingassist.ui.components.SearchResult
 import com.jixiexiaoge.drivingassist.ui.components.SearchProvider
 import com.jixiexiaoge.drivingassist.ui.components.searchPlaces
@@ -155,6 +157,21 @@ class MainActivityUI(
                             carrotParamClient = core.getCarrotParamClientSafely(),
                             carrotManFields = core.carrotManFields
                         )
+                        is Page.DeviceWeb -> {
+                            val ip = core.networkManager?.getCurrentDeviceIP()
+                            DeviceWebPage(
+                                url = if (ip != null) "http://$ip:7000" else "",
+                                onBack = { core.currentPage = Page.Home }
+                            )
+                        }
+                        is Page.CameraVision -> {
+                            val ip = core.networkManager?.getCurrentDeviceIP()
+                            CameraVisionPage(
+                                deviceIp = ip,
+                                wsClient = core.carrotWsClient,
+                                onBack = { core.currentPage = Page.Home }
+                            )
+                        }
                     }
                 }
             }

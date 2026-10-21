@@ -422,7 +422,7 @@ object MainActivityUIComponents {
                 val configuration = androidx.compose.ui.platform.LocalConfiguration.current
                 val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
                 val cols = if (isLandscape) 5 else 3
-                val rows = (17 + cols - 1) / cols   // 17个按钮（15个原有 + 新增重启/关机）
+                val rows = (18 + cols - 1) / cols   // 18个按钮（16个原有 + 重启/关机 + Carrot视觉）
                 val btnSize = if (isLandscape) 56.dp else 72.dp
                 val gridSpacing = if (isLandscape) 4.dp else 10.dp
                 Column(
@@ -610,17 +610,10 @@ object MainActivityUIComponents {
                                 }
                             }
                             12 -> {
-                                // 🟢 巡航环 — 打开设备 Web 控制页
+                                // 🟢 巡航环 — 打开设备 Web 控制页（APP 内 WebView，替代外部浏览器）
                                 val cruise = carrotManFields.vCruiseKph.toInt()
                                 Button(
-                                    onClick = {
-                                        val ip = networkManager?.getCurrentDeviceIP()
-                                        if (ip != null) {
-                                            try {
-                                                context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("http://$ip:7000")).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-                                            } catch (_: Exception) { }
-                                        }
-                                    },
+                                    onClick = { onPageChange(Page.DeviceWeb); onDismiss?.invoke() },
                                     modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF22C55E)),
                                     contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(14.dp)
@@ -712,6 +705,20 @@ object MainActivityUIComponents {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                                         Icon(Icons.Default.PowerSettingsNew, "关机", Modifier.size(24.dp), tint = Color.White)
                                         Text(localized("关机", "Power Off"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                    }
+                                }
+                            }
+                            18 -> {
+                                // 📷 Carrot Vision 原生视频（/ws/camera/road → MediaCodec 硬解码）
+                                Button(
+                                    onClick = { onPageChange(Page.CameraVision); onDismiss?.invoke() },
+                                    modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
+                                    contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                        Icon(Icons.Default.Videocam, "Carrot视觉", Modifier.size(24.dp), tint = Color.White)
+                                        Text(localized("Carrot视觉", "Vision"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                 }
                             }
