@@ -51,8 +51,8 @@ sealed class Page {
     data object Experiment : Page()
     /** 设备 Web 控制页（内嵌 WebView 加载 7000 端口） */
     data object DeviceWeb : Page()
-    /** Carrot Vision 原生视频页（/ws/camera/road → MediaCodec 硬解码） */
-    data object CameraVision : Page()
+    /** Carrot HUD 原生页（/ws/compact_state → Qt 全集 HUD，无视频） */
+    data object CarrotHud : Page()
 }
 
 /**

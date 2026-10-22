@@ -81,7 +81,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jixiexiaoge.drivingassist.ui.components.AutoSwitchExperimentPage
-import com.jixiexiaoge.drivingassist.ui.components.CameraVisionPage
+import com.jixiexiaoge.drivingassist.ui.components.CarrotHudPage
 import com.jixiexiaoge.drivingassist.ui.components.Carrot7706JsonDebugOverlay
 import com.jixiexiaoge.drivingassist.ui.components.DeviceWebPage
 import com.jixiexiaoge.drivingassist.ui.components.SearchResult
@@ -164,9 +164,9 @@ class MainActivityUI(
                                 onBack = { core.currentPage = Page.Home }
                             )
                         }
-                        is Page.CameraVision -> {
+                        is Page.CarrotHud -> {
                             val ip = core.networkManager?.getCurrentDeviceIP()
-                            CameraVisionPage(
+                            CarrotHudPage(
                                 deviceIp = ip,
                                 wsClient = core.carrotWsClient,
                                 onBack = { core.currentPage = Page.Home }

@@ -15,8 +15,8 @@ import org.json.JSONObject
  * Carrot WebSocket 客户端
  *
  * 连接到 comma3 设备上的 carrot server (端口 7000)，
- * 通过 /ws/raw_multiplex 获取实时 cereal 数据，
- * 通过 /ws/camera/road 获取摄像头画面。
+ * 通过 /ws/raw_multiplex 获取实时 cereal 数据（首页数据流），
+ * 通过 /ws/compact_state 获取紧凑 HUD/overlay 状态（Carrot HUD 页数据流）。
  */
 class CarrotWsClient(
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -24,9 +24,7 @@ class CarrotWsClient(
     companion object {
         private const val TAG = "CarrotWsClient"
         private const val WS_RAW_PATH = "/ws/raw_multiplex"
-        private const val WS_CAMERA_PATH = "/ws/camera/road"
-        /** 请求服务端按该帧率转发（性能优先，必要时降低此值换流畅） */
-        private const val CAMERA_FPS = 15
+        private const val WS_COMPACT_PATH = "/ws/compact_state"
         private const val RECONNECT_BASE_MS = 2000L
         private const val RECONNECT_MAX_MS = 30000L
         private const val DATA_TIMEOUT_MS = 4000L
@@ -49,7 +47,7 @@ class CarrotWsClient(
         .build()
 
     private var dataWs: WebSocket? = null
-    private var cameraWs: WebSocket? = null
+    private var compactWs: WebSocket? = null
     private var reconnectJob: Job? = null
     private var timeoutCheckJob: Job? = null
 
@@ -72,12 +70,9 @@ class CarrotWsClient(
     private val _deviceStatus = MutableStateFlow(DeviceStatus())
     val deviceStatus = _deviceStatus.asStateFlow()
 
-    /** 摄像头帧 */
-    private val _cameraFrame = MutableStateFlow<CameraFrame?>(null)
-    val cameraFrame = _cameraFrame.asStateFlow()
-
-    /** 摄像头帧回调 */
-    var onCameraFrame: ((CameraFrame) -> Unit)? = null
+    /** 紧凑状态（web Carrot Vision 同源 /ws/compact_state，HUD 页数据源） */
+    private val _compactState = MutableStateFlow<CompactState?>(null)
+    val compactState = _compactState.asStateFlow()
 
     // ===================== 公共 API =====================
 
@@ -111,37 +106,37 @@ class CarrotWsClient(
         }
     }
 
-    /** 标记摄像头是否已连接，防止重复连接 */
-    private var cameraConnected = false
+    /** 标记紧凑状态是否已连接 */
+    private var compactConnected = false
 
-    fun connectCamera(host: String) {
-        // 🛡️ 防重复连接摄像头
-        if (cameraConnected) {
-            Log.d(TAG, "⏭️ 摄像头已连接，跳过")
+    fun connectCompact(host: String) {
+        if (compactConnected) {
+            Log.d(TAG, "⏭️ 紧凑状态已连接，跳过")
             return
         }
         val cleanHost = host.trim().replace("http://", "").replace("https://", "").split("/").first()
-        val camUrl = "ws://$cleanHost:7000$WS_CAMERA_PATH?fps=$CAMERA_FPS"
-        Log.i(TAG, "📷 连接摄像头 WebSocket: $camUrl")
-        cameraWs = client.newWebSocket(Request.Builder().url(camUrl).build(), CameraWsListener())
-        cameraConnected = true
+        val servicesParam = CompactServices.ALL.joinToString(",")
+        val compactUrl = "ws://$cleanHost:7000$WS_COMPACT_PATH?services=$servicesParam"
+        Log.i(TAG, "🧩 连接紧凑状态 WebSocket: $compactUrl")
+        compactWs = client.newWebSocket(Request.Builder().url(compactUrl).build(), CompactWsListener())
+        compactConnected = true
     }
 
     fun disconnect() {
         dataWs?.close(1000, "client closing")
-        cameraWs?.close(1000, "client closing")
-        cameraWs = null
-        cameraConnected = false
+        compactWs?.close(1000, "client closing")
+        compactWs = null
+        compactConnected = false
         reconnectJob?.cancel()
         timeoutCheckJob?.cancel()
         _connectionState.value = ConnectionState.DISCONNECTED
     }
 
-    /** 仅断开摄像头流（保留数据流），原生 Carrot Vision 页面离开时调用 */
-    fun disconnectCamera() {
-        cameraWs?.close(1000, "client closing")
-        cameraWs = null
-        cameraConnected = false
+    /** 仅断开紧凑状态流（保留数据流） */
+    fun disconnectCompact() {
+        compactWs?.close(1000, "client closing")
+        compactWs = null
+        compactConnected = false
     }
 
     // ===================== 数据监听器 =====================
@@ -184,18 +179,19 @@ class CarrotWsClient(
         }
     }
 
-    private inner class CameraWsListener : WebSocketListener() {
+    private inner class CompactWsListener : WebSocketListener() {
         override fun onOpen(ws: WebSocket, response: Response) {
-            Log.i(TAG, "✅ 摄像头 WebSocket 已连接")
+            Log.i(TAG, "✅ 紧凑状态 WebSocket 已连接")
         }
 
         override fun onMessage(ws: WebSocket, bytes: ByteString) {
             try {
-                val frame = CameraWsFrame.decode(bytes.toByteArray())
-                _cameraFrame.value = frame
-                onCameraFrame?.invoke(frame)
+                // CVB1 批帧（或单 CVS1 帧）→ 合并各服务字段为一份快照（HUD 页全量数据）
+                CompactStateParser.parseBatch(bytes.toByteArray())?.let { state ->
+                    _compactState.value = state
+                }
             } catch (e: Exception) {
-                Log.w(TAG, "解析摄像头帧失败: ${e.message}")
+                Log.w(TAG, "解析紧凑状态帧失败: ${e.message}")
             }
         }
 
@@ -204,13 +200,13 @@ class CarrotWsClient(
         }
 
         override fun onClosed(ws: WebSocket, code: Int, reason: String) {
-            Log.i(TAG, "摄像头 WebSocket 已关闭: $reason")
-            cameraConnected = false
+            Log.i(TAG, "紧凑状态 WebSocket 已关闭: $reason")
+            compactConnected = false
         }
 
         override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
-            Log.w(TAG, "摄像头 WebSocket 失败: ${t.message}")
-            cameraConnected = false
+            Log.w(TAG, "紧凑状态 WebSocket 失败: ${t.message}")
+            compactConnected = false
         }
     }
 
@@ -356,17 +352,6 @@ data class DeviceStatus(
     val gpsLongitude: Double = 0.0,
 )
 
-data class CameraFrame(
-    val camera: String,
-    val codec: String,
-    val frameId: Int,
-    val width: Int,
-    val height: Int,
-    val keyFrame: Boolean,
-    val payload: ByteArray,
-    val timestamp: Long
-)
-
 enum class ConnectionState {
     DISCONNECTED, CONNECTING, CONNECTED
 }
@@ -390,44 +375,6 @@ object MultiplexFrame {
     }
 
     data class Frame(val service: String, val payload: ByteArray)
-}
-
-/**
- * 摄像头 WebSocket 帧解析
- * 格式: [4字节JSON元数据长度][JSON元数据][H264 header][H264 data]
- */
-object CameraWsFrame {
-    fun decode(data: ByteArray): CameraFrame {
-        val dis = DataInputStream(ByteArrayInputStream(data))
-        val metaLen = dis.readInt()
-        val metaBytes = ByteArray(metaLen)
-        dis.readFully(metaBytes)
-        val metaStr = String(metaBytes, Charsets.UTF_8)
-
-        // 解析 JSON 元数据
-        val json = org.json.JSONObject(metaStr)
-        val camera = json.optString("camera", "road")
-        val codec = json.optString("codec", "avc1.640028")
-        val frameId = json.optInt("frameId", 0)
-        val width = json.optInt("width", 0)
-        val height = json.optInt("height", 0)
-        val keyFrame = json.optBoolean("keyFrame", false)
-
-        // 剩余 payload
-        val payload = ByteArray(data.size - 4 - metaLen)
-        dis.readFully(payload)
-
-        return CameraFrame(
-            camera = camera,
-            codec = codec,
-            frameId = frameId,
-            width = width,
-            height = height,
-            keyFrame = keyFrame,
-            payload = payload,
-            timestamp = System.currentTimeMillis()
-        )
-    }
 }
 
 // ===================== Cereal 解码器 =====================

@@ -709,16 +709,16 @@ object MainActivityUIComponents {
                                 }
                             }
                             18 -> {
-                                // 📷 Carrot Vision 原生视频（/ws/camera/road → MediaCodec 硬解码）
+                                // 📊 Carrot HUD 原生页（/ws/compact_state → Qt 全集 HUD，无视频）
                                 Button(
-                                    onClick = { onPageChange(Page.CameraVision); onDismiss?.invoke() },
+                                    onClick = { onPageChange(Page.CarrotHud); onDismiss?.invoke() },
                                     modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
                                     contentPadding = PaddingValues(0.dp), shape = RoundedCornerShape(14.dp)
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                        Icon(Icons.Default.Videocam, "Carrot视觉", Modifier.size(24.dp), tint = Color.White)
-                                        Text(localized("Carrot视觉", "Vision"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Icon(Icons.Default.Speed, "Carrot HUD", Modifier.size(24.dp), tint = Color.White)
+                                        Text(localized("Carrot HUD", "HUD"), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                 }
                             }
