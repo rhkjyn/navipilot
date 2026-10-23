@@ -168,7 +168,6 @@ class MainActivityUI(
                             val ip = core.networkManager?.getCurrentDeviceIP()
                             CarrotHudPage(
                                 deviceIp = ip,
-                                wsClient = core.carrotWsClient,
                                 onBack = { core.currentPage = Page.Home }
                             )
                         }
