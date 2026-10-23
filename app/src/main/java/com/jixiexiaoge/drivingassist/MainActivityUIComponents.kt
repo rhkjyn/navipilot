@@ -709,7 +709,7 @@ object MainActivityUIComponents {
                                 }
                             }
                             18 -> {
-                                // 📊 Carrot HUD 原生页（/ws/compact_state → Qt 全集 HUD，无视频）
+                                // 📊 Carrot HUD 页（WebView 加载设备端 7000 纯 HUD 模式 ?hud_only=1，无视频）
                                 Button(
                                     onClick = { onPageChange(Page.CarrotHud); onDismiss?.invoke() },
                                     modifier = Modifier.size(btnSize).shadow(4.dp, RoundedCornerShape(14.dp)),

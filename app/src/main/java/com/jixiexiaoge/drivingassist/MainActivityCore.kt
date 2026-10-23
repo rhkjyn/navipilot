@@ -51,7 +51,7 @@ sealed class Page {
     data object Experiment : Page()
     /** 设备 Web 控制页（内嵌 WebView 加载 7000 端口） */
     data object DeviceWeb : Page()
-    /** Carrot HUD 原生页（/ws/compact_state → Qt 全集 HUD，无视频） */
+    /** Carrot HUD 页（WebView 加载设备端 7000 的纯 HUD 模式 ?hud_only=1，无视频） */
     data object CarrotHud : Page()
 }
 
